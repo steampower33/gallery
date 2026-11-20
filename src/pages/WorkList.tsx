@@ -12,6 +12,7 @@ export default function WorkList() {
     <div className="page">
       {!embed && (
         <header className="header">
+          <a href="https://steampower33.github.io/">← 블로그</a>
           <h1>Gallery</h1>
         </header>
       )}
