@@ -2,11 +2,9 @@
 // id 는 URL(#/works/<id>)에 쓰이므로 폴더 이름과 같게 둔다.
 
 import type { Work } from './types'
-import * as clearColor from './clear-color'
 import * as tvStatic from './tv-static'
 
 export const works: readonly Work[] = [
-  { id: 'clear-color', module: clearColor },
   { id: 'tv-static', module: tvStatic },
 ]
 
