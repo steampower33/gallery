@@ -3,9 +3,11 @@
 
 import type { Work } from './types'
 import * as clearColor from './clear-color'
+import * as tvStatic from './tv-static'
 
 export const works: readonly Work[] = [
   { id: 'clear-color', module: clearColor },
+  { id: 'tv-static', module: tvStatic },
 ]
 
 export function findWork(id: string): Work | undefined {
