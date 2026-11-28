@@ -1,4 +1,4 @@
-// 예시 작품: 캔버스를 단색으로 지우기만 한다. 갤러리 뼈대가 동작하는지 확인용.
+// 기본 예제: 캔버스를 단색으로 지우기만 한다. 갤러리 뼈대가 동작하는지 확인용.
 
 import type { GpuContext, WorkMeta } from '../types'
 import thumbnail from './thumbnail.svg'

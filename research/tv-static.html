@@ -56,7 +56,7 @@
       <li><a href="#real">진짜 TV 노이즈의 정체</a></li>
       <li><a href="#anatomy">화면 요소 분해</a></li>
       <li><a href="#random">GPU에서 난수 만들기</a></li>
-      <li><a href="#design">갤러리 작품 구조로 옮기기</a></li>
+      <li><a href="#design">갤러리 예제 구조로 옮기기</a></li>
       <li><a href="#pitfalls">주의할 점</a></li>
       <li><a href="#extras">확장 아이디어</a></li>
       <li><a href="#demo">라이브 데모</a></li>
@@ -119,8 +119,8 @@
 
   <div class="note">좌표를 <code>u32</code>로 바꾸기 전에 음수가 되지 않게 오프셋을 더한다. WGSL에서 음수 <code>f32</code> → <code>u32</code> 변환은 0으로 고정(clamp)되어 같은 값이 반복된다.</div>
 
-  <h2 id="design">4. 갤러리 작품 구조로 옮기기</h2>
-  <p>이 저장소의 작품은 <code>WorkModule</code>(<code>meta</code>, <code>init</code>, <code>frame(time)</code>, <code>dispose</code>, 선택적 <code>resize</code>)을 export 한다. 지지직 효과는 정점 버퍼 없이 <b>전체 화면 삼각형 하나 + 유니폼 버퍼 하나</b>로 충분하다.</p>
+  <h2 id="design">4. 갤러리 예제 구조로 옮기기</h2>
+  <p>이 저장소의 예제는 <code>WorkModule</code>(<code>meta</code>, <code>init</code>, <code>frame(time)</code>, <code>dispose</code>, 선택적 <code>resize</code>)을 export 한다. 지지직 효과는 정점 버퍼 없이 <b>전체 화면 삼각형 하나 + 유니폼 버퍼 하나</b>로 충분하다.</p>
   <ol>
     <li><code>src/works/tv-static/index.ts</code>와 <code>thumbnail.svg</code>를 만들고 <code>src/works/index.ts</code>에 등록한다.</li>
     <li><code>init</code>: 셰이더 모듈, 렌더 파이프라인(<code>format</code>은 넘겨받은 <code>gpu.format</code>), 48바이트 유니폼 버퍼, 바인드 그룹을 만든다. 캔버스 크기는 <code>canvas.width/height</code>에서 읽는다.</li>

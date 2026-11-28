@@ -1,4 +1,4 @@
-// 작품 하나의 실행 수명주기: 디바이스 생성 → 리사이즈 → rAF 루프 → 정리.
+// 예제 하나의 실행 수명주기: 디바이스 생성 → 리사이즈 → rAF 루프 → 정리.
 
 import type { WorkModule } from '../works/types'
 import { createGpuSession } from './device'
@@ -7,9 +7,9 @@ export interface RunHandle {
   stop(): void
 }
 
-// 한 번에 하나의 작품만 실행되도록 직렬화한다.
-// 이전 작품의 dispose/destroy 가 끝나야 다음 작품의 init 이 시작되므로,
-// 작품 코드는 상태를 모듈 수준 변수에 둬도 겹치지 않는다
+// 한 번에 하나의 예제만 실행되도록 직렬화한다.
+// 이전 예제의 dispose/destroy 가 끝나야 다음 예제의 init 이 시작되므로,
+// 예제 코드는 상태를 모듈 수준 변수에 둬도 겹치지 않는다
 // (React StrictMode 가 개발 모드에서 effect 를 두 번 실행해도 안전).
 let queue: Promise<void> = Promise.resolve()
 

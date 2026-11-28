@@ -23,13 +23,13 @@ WebGPU는 보안 컨텍스트에서만 동작한다. `localhost`는 괜찮지만
 ```
 src/
   gpu/device.ts        어댑터/디바이스 초기화, 캔버스 컨텍스트 설정
-  gpu/runner.ts        리사이즈, rAF 루프, 작품 정리
-  works/types.ts       작품 인터페이스 (WorkModule, WorkMeta, Work)
-  works/index.ts       작품 목록 등록
-  works/<id>/          작품 하나 = 폴더 하나
+  gpu/runner.ts        리사이즈, rAF 루프, 예제 정리
+  works/types.ts       예제 인터페이스 (WorkModule, WorkMeta, Work)
+  works/index.ts       예제 목록 등록
+  works/<id>/          예제 하나 = 폴더 하나
 ```
 
-## 새 작품 추가
+## 새 예제 추가
 
 1. `src/works/<id>/index.ts`를 만든다. `<id>`는 URL에 쓰이므로 영문 소문자와 `-`로 짓는다.
 
@@ -62,10 +62,10 @@ src/
    ]
    ```
 
-### 작품 실행 규칙
+### 예제 실행 규칙
 
-- 작품마다 새 `GPUDevice`가 만들어진다. 작품을 떠나면 `dispose()` 뒤에 `device.destroy()`가 호출되어 그 디바이스로 만든 GPU 리소스가 모두 해제된다.
-- 한 번에 한 작품만 실행된다. 이전 작품의 정리가 끝나야 다음 `init`이 시작되므로 상태를 모듈 수준 변수에 둬도 된다.
+- 예제마다 새 `GPUDevice`가 만들어진다. 예제를 떠나면 `dispose()` 뒤에 `device.destroy()`가 호출되어 그 디바이스로 만든 GPU 리소스가 모두 해제된다.
+- 한 번에 한 예제만 실행된다. 이전 예제의 정리가 끝나야 다음 `init`이 시작되므로 상태를 모듈 수준 변수에 둬도 된다.
 - `init`이 호출될 때 캔버스는 이미 `navigator.gpu.getPreferredCanvasFormat()` 포맷, `alphaMode: 'opaque'`로 configure 되어 있다. 다른 설정이 필요하면 `init`에서 `gpu.context.configure()`를 다시 호출한다. 렌더 파이프라인의 color target format은 `gpu.format`을 쓴다.
 - 캔버스가 화면 밖에 있거나 탭이 숨겨지면 루프가 멈추고, 그동안의 시간은 `time`에 더해지지 않는다.
 - 검증 에러(셰이더 컴파일 에러 등)는 브라우저 콘솔에 `[WebGPU]`로 찍힌다.

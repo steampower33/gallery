@@ -1,9 +1,9 @@
 // WebGPU 어댑터/디바이스 초기화와 캔버스 컨텍스트 설정.
-// 작품 코드가 아니라 갤러리 공통 코드다. 모든 작품이 이 경로로 GPUDevice를 받는다.
+// 예제 코드가 아니라 갤러리 공통 코드다. 모든 예제가 이 경로로 GPUDevice를 받는다.
 
 export type SupportStatus = 'supported' | 'no-api' | 'no-adapter'
 
-// 지원 여부 확인용 어댑터 요청은 한 번만 한다 (목록/작품 화면이 같이 씀).
+// 지원 여부 확인용 어댑터 요청은 한 번만 한다 (목록/예제 화면이 같이 씀).
 let supportPromise: Promise<SupportStatus> | null = null
 
 /**
@@ -20,7 +20,7 @@ export function checkWebGPUSupport(): Promise<SupportStatus> {
   return supportPromise
 }
 
-/** 작품 하나를 실행하는 동안 쓰는 GPU 객체 묶음. */
+/** 예제 하나를 실행하는 동안 쓰는 GPU 객체 묶음. */
 export interface GpuSession {
   adapter: GPUAdapter
   device: GPUDevice
@@ -29,8 +29,8 @@ export interface GpuSession {
 }
 
 /**
- * 작품 하나를 위한 GPUDevice를 새로 만들고 캔버스에 연결한다.
- * 작품이 끝나면 호출 측(runner)에서 device.destroy()로 통째로 정리한다.
+ * 예제 하나를 위한 GPUDevice를 새로 만들고 캔버스에 연결한다.
+ * 예제가 끝나면 호출 측(runner)에서 device.destroy()로 통째로 정리한다.
  */
 export async function createGpuSession(canvas: HTMLCanvasElement): Promise<GpuSession> {
   // 1) WebGPU 진입점 확인.
@@ -52,7 +52,7 @@ export async function createGpuSession(canvas: HTMLCanvasElement): Promise<GpuSe
   //    디바이스는 어댑터에 대한 논리적 연결이다. 버퍼, 텍스처, 파이프라인 같은
   //    모든 GPU 리소스는 디바이스에서 만들어지고, 디바이스가 파괴되면 같이 사라진다.
   //    requiredFeatures/requiredLimits를 주지 않으면 모든 환경에서 보장되는 기본 한도로 만들어진다.
-  //    작품에 특정 기능(예: 'timestamp-query', 'float32-filterable')이 필요해지면 여기서 요청하도록 확장한다.
+  //    예제에 특정 기능(예: 'timestamp-query', 'float32-filterable')이 필요해지면 여기서 요청하도록 확장한다.
   const device = await adapter.requestDevice()
 
   // 4) 검증 에러 출력.
@@ -77,7 +77,7 @@ export async function createGpuSession(canvas: HTMLCanvasElement): Promise<GpuSe
   // 7) 컨텍스트 설정.
   //    이 디바이스로 캔버스에 그리겠다고 연결한다. 이후 context.getCurrentTexture()로
   //    이번 프레임에 그릴 텍스처를 얻는다. alphaMode 'opaque'는 캔버스 뒤 페이지와 섞지 않는다는 뜻.
-  //    작품이 다른 설정(예: usage 추가)이 필요하면 init 안에서 context.configure()를 다시 호출해도 된다.
+  //    예제가 다른 설정(예: usage 추가)이 필요하면 init 안에서 context.configure()를 다시 호출해도 된다.
   context.configure({ device, format, alphaMode: 'opaque' })
 
   return { adapter, device, context, format }

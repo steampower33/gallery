@@ -12,10 +12,10 @@ export default function WorkView() {
   const work = id ? findWork(id) : undefined
 
   let body
-  if (!work) body = <div className="notice">작품을 찾을 수 없습니다: {id}</div>
+  if (!work) body = <div className="notice">예제를 찾을 수 없습니다: {id}</div>
   else if (support === 'checking') body = null
   else if (support !== 'supported') body = <Unsupported status={support} />
-  // key={id}: 작품이 바뀌면 캔버스 요소도 새로 만든다 (이전 컨텍스트 설정이 남지 않게).
+  // key={id}: 예제가 바뀌면 캔버스 요소도 새로 만든다 (이전 컨텍스트 설정이 남지 않게).
   else body = <GpuCanvas key={work.id} work={work.module} />
 
   if (embed) return <div className="embed">{body}</div>

@@ -1,11 +1,11 @@
-// 작품(work) 인터페이스 정의.
+// 예제(work) 인터페이스 정의.
 // src/works/<id>/index.ts 가 이 형태로 export 하고, src/works/index.ts 에서 등록한다.
 
-/** 목록 카드와 작품 화면 헤더에 쓰이는 정보. */
+/** 목록 카드와 예제 화면 헤더에 쓰이는 정보. */
 export interface WorkMeta {
   title: string
   description: string
-  /** 썸네일 이미지 URL. 작품 폴더의 이미지를 import 해서 넣는다 (Vite가 base 경로를 붙여 줌). */
+  /** 썸네일 이미지 URL. 예제 폴더의 이미지를 import 해서 넣는다 (Vite가 base 경로를 붙여 줌). */
   thumbnail: string
 }
 
@@ -15,7 +15,7 @@ export interface GpuContext {
   format: GPUTextureFormat
 }
 
-/** 작품 모듈이 export 해야 하는 것들. */
+/** 예제 모듈이 export 해야 하는 것들. */
 export interface WorkModule {
   meta: WorkMeta
   /**
@@ -26,7 +26,7 @@ export interface WorkModule {
   /** 매 프레임 호출. time 은 init 이후 경과한 초 (화면 밖에서 일시정지한 시간은 제외). */
   frame(time: number): void
   /**
-   * 작품을 떠날 때 호출. GPU 리소스는 이후 device.destroy() 로 함께 해제되므로,
+   * 예제를 떠날 때 호출. GPU 리소스는 이후 device.destroy() 로 함께 해제되므로,
    * 여기서는 주로 이벤트 리스너나 모듈 수준 상태를 정리한다.
    */
   dispose(): void
@@ -34,7 +34,7 @@ export interface WorkModule {
   resize?(width: number, height: number): void
 }
 
-/** 목록에 등록된 작품. id 는 URL(/works/:id)과 폴더 이름에 쓰인다. */
+/** 목록에 등록된 예제. id 는 URL(/works/:id)과 폴더 이름에 쓰인다. */
 export interface Work {
   id: string
   module: WorkModule
