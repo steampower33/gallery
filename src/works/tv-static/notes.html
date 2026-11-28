@@ -1,0 +1,148 @@
+<!-- TV Static 설명. 갤러리의 설명 패널에 그대로 들어가는 HTML 조각이다 (index.ts 가 ?raw 로 읽는다).
+     셰이더 자리표시자에는 static.wgsl 전체가 들어간다. 페이지 안 이동용 #링크는 쓰지 않는다 (HashRouter 와 겹침). -->
+<p class="lead">아날로그 TV 노이즈가 실제로 왜, 어떻게 생기는지 정리하고, 이를 WebGPU(WGSL) 프래그먼트 셰이더로 옮긴 방법을 적었다. 옆 화면의 파라미터를 움직이면 각 요소가 화면에 어떻게 드러나는지 바로 볼 수 있다.</p>
+
+<h2>1. 진짜 TV 노이즈의 정체</h2>
+<p>방송 신호가 없는 채널에 아날로그 TV를 맞추면, 튜너와 증폭기는 신호를 못 찾고 최대 이득(gain)으로 올라간다. 그러면 안테나와 회로가 받아들이는 온갖 잡음이 그대로 화면 밝기로 그려진다. 이것이 "snow(눈)"라고 부르는 지지직 화면이다.</p>
+<ul>
+  <li><b>대부분은 수신기 자체의 열잡음(thermal noise)</b>이다. 특히 안테나가 연결된 첫 번째 증폭 트랜지스터에서 많이 나온다.</li>
+  <li>그 밖에 사람이 만든 전파, 태양 같은 천체 전파원도 섞인다.</li>
+  <li><b>약 1% 정도는 우주 배경 복사(CMB)</b>, 즉 빅뱅의 잔광이라는 이야기가 유명하다. 1964년 펜지어스와 윌슨이 안테나에서 지워지지 않는 잡음을 쫓다가 CMB를 발견한 일화와 이어진다. (대중 매체 기준 근사치)</li>
+</ul>
+
+<h3>시각적 특징 (구현할 때 참고할 사실들)</h3>
+<table>
+  <tr><th>특징</th><th>이유</th></tr>
+  <tr><td><b>거의 흑백</b>이다</td><td>컬러 TV는 컬러 버스트(color burst) 신호가 없으면 <i>color killer</i> 회로가 색 신호 처리를 꺼 버린다. 그래서 대부분 회색 알갱이로 보이고, 기종에 따라 아주 약한 색 얼룩만 남는다.</td></tr>
+  <tr><td>프레임마다 <b>완전히 새로 바뀐다</b></td><td>열잡음은 시간적으로 상관이 없다. 직전 프레임과 전혀 관계없는 패턴이 나온다.</td></tr>
+  <tr><td>알갱이가 <b>가로로 조금 길다</b></td><td>아날로그 영상은 주사선을 따라 가로 방향으로 연속 신호인데, 대역폭이 제한되어 가로 방향으로 약간 번진다. 세로는 주사선 단위로 끊긴다.</td></tr>
+  <tr><td>밝기 분포가 <b>가우시안</b>에 가깝다</td><td>열잡음은 정규분포를 따른다. 균일 분포 난수를 그대로 쓰면 "너무 디지털"해 보이니, 여러 개를 평균내 종 모양 분포를 흉내 낸다.</td></tr>
+  <tr><td><b>주사선</b>이 보인다</td><td>NTSC는 525줄(보이는 건 약 480줄), 약 60필드/초 인터레이스다. 줄 사이의 어두운 틈이 질감을 만든다.</td></tr>
+  <tr><td>가끔 <b>흐르는 띠</b>나 <b>가로 흔들림</b>이 있다</td><td>수직/수평 동기 신호가 없어서 화면이 위아래로 굴러가거나(roll), 줄마다 가로 위치가 흔들린다.</td></tr>
+  <tr><td>"쉬이이" 하는 <b>소리</b></td><td>오디오도 같은 원리로 화이트 노이즈가 된다. 화면과 같이 내면 체감이 크게 좋아진다.</td></tr>
+</table>
+
+<h2>2. 화면 요소 분해 → 셰이더 구현 대응</h2>
+<table>
+  <tr><th>요소</th><th>셰이더 구현</th><th>우선순위</th></tr>
+  <tr><td>기본 노이즈</td><td>(셀 좌표, 프레임 번호)를 정수 해시에 넣어 0~1 난수. 셀 크기로 알갱이 크기를 조절한다.</td><td>필수</td></tr>
+  <tr><td>가우시안 분포</td><td>난수 3개를 평균내 대비를 다시 늘린다. (정확히 하려면 Box–Muller)</td><td>높음</td></tr>
+  <tr><td>가로 번짐</td><td>셀을 가로로 1.5~2배 넓게 잡는다. 또는 x 방향으로 이웃 샘플과 섞는다.</td><td>높음</td></tr>
+  <tr><td>프레임 레이트 고정</td><td><code>frame = floor(time * fps)</code>. 144Hz 모니터에서도 30~60fps처럼 보이게 한다.</td><td>높음</td></tr>
+  <tr><td>주사선</td><td><code>cos(y * π / 줄높이)</code>로 밝기를 줄마다 살짝 낮춘다.</td><td>중간</td></tr>
+  <tr><td>롤링 띠</td><td><code>fract(uv.y + time * speed)</code>로 굴러가는 밝은/어두운 띠를 만든다.</td><td>중간</td></tr>
+  <tr><td>줄 단위 가로 흔들림</td><td>(줄 번호, 프레임) 해시로 줄마다 x 오프셋을 준다.</td><td>중간</td></tr>
+  <tr><td>약한 색 얼룩</td><td>다른 시드로 뽑은 RGB 난수를 아주 조금 섞는다. 0이면 완전 흑백이다.</td><td>낮음</td></tr>
+  <tr><td>비네팅 / 화면 곡률</td><td>가장자리 어둡게, uv를 배럴 왜곡한다.</td><td>낮음</td></tr>
+  <tr><td>인광 잔상</td><td>이전 프레임 텍스처와 섞는다 (ping-pong). 텍스처 2장이 필요하다.</td><td>선택</td></tr>
+</table>
+
+<h2>3. GPU에서 난수 만들기</h2>
+<p>셰이더에는 <code>rand()</code>가 없고 이전 프레임 상태도 없으니, <b>입력 좌표 → 난수</b>인 해시 함수를 쓴다. 입력은 <code>(셀 x, 셀 y, 프레임 번호)</code>다.</p>
+
+<h3>흔한 함정: <code>fract(sin(dot(p, …)) * 43758.5453)</code></h3>
+<p>인터넷 셰이더에 가장 많이 보이는 한 줄 난수지만, <code>sin</code>의 정밀도가 GPU/드라이버마다 달라서 기기에 따라 줄무늬 패턴이 생기거나 큰 입력값에서 품질이 무너진다. 시간을 입력에 넣으면 시간이 커질수록 더 나빠진다. Dave Hoskins의 "Hash without Sine"이 이 문제를 피하려고 나온 대안이다.</p>
+
+<h3>추천: 정수 해시 PCG (pcg3d)</h3>
+<p>Jarzynski &amp; Olano의 논문 <i>Hash Functions for GPU Rendering</i>(JCGT 2020)은 100개가 넘는 해시를 품질(TestU01)과 속도로 비교했다. 품질-속도 균형이 가장 좋은 쪽으로 <b>PCG</b>를 꼽았고, 다차원 입력/출력용으로 <b>pcg3d</b>를 제안했다. WGSL은 <code>u32</code> 곱셈과 덧셈이 오버플로 시 래핑되므로 그대로 옮길 수 있다.</p>
+<pre><code>fn pcg3d(v_in: vec3u) -&gt; vec3u {
+var v = v_in * 1664525u + 1013904223u;
+v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+v ^= v &gt;&gt; vec3u(16u);
+v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+return v;
+}
+// 0..1 실수로: vec3f(pcg3d(...)) / 4294967295.0</code></pre>
+<p>입력이 <code>(x, y, frame)</code> 세 개라 pcg3d가 딱 맞는다. 출력도 3개라서 그대로 평균내 가우시안 근사에 쓰거나, RGB 색 얼룩으로 쓸 수 있다.</p>
+
+<div class="note">좌표를 <code>u32</code>로 바꾸기 전에 음수가 되지 않게 오프셋을 더한다. WGSL에서 음수 <code>f32</code> → <code>u32</code> 변환은 0으로 고정(clamp)되어 같은 값이 반복된다.</div>
+
+<h2>4. 갤러리 예제 구조로 옮기기</h2>
+<p>이 저장소의 예제는 <code>WorkModule</code>(<code>meta</code>, <code>init</code>, <code>frame(time)</code>, <code>dispose</code>, 선택적 <code>resize</code>)을 export 한다. 지지직 효과는 정점 버퍼 없이 <b>전체 화면 삼각형 하나 + 유니폼 버퍼 하나</b>로 충분하다.</p>
+<ol>
+  <li><code>src/works/tv-static/index.ts</code>와 <code>thumbnail.svg</code>를 만들고 <code>src/works/index.ts</code>에 등록한다.</li>
+  <li><code>init</code>: 셰이더 모듈, 렌더 파이프라인(<code>format</code>은 넘겨받은 <code>gpu.format</code>), 48바이트 유니폼 버퍼, 바인드 그룹을 만든다. 캔버스 크기는 <code>canvas.width/height</code>에서 읽는다.</li>
+  <li><code>frame(time)</code>: 해상도, 시간, 파라미터를 <code>queue.writeBuffer</code>로 올리고 <code>draw(3)</code>을 한 번 호출한다.</li>
+  <li><code>resize</code>: 해상도는 매 프레임 유니폼으로 보내므로 따로 다시 만들 리소스가 없다. 캔버스 참조만 들고 있으면 된다.</li>
+</ol>
+<pre><code>// src/works/tv-static/index.ts (뼈대)
+import type { GpuContext, WorkMeta } from '../types'
+import thumbnail from './thumbnail.svg'
+import shaderCode from './static.wgsl?raw'   // Vite의 ?raw 로 문자열 import
+
+export const meta: WorkMeta = { title: 'TV Static', description: '신호 없는 아날로그 TV 화면', thumbnail }
+
+let device: GPUDevice | null = null
+let context: GPUCanvasContext | null = null
+let canvas: HTMLCanvasElement | null = null
+let pipeline: GPURenderPipeline
+let uniformBuffer: GPUBuffer
+let bindGroup: GPUBindGroup
+const uniforms = new Float32Array(12)
+
+export function init(c: HTMLCanvasElement, d: GPUDevice, gpu: GpuContext) {
+canvas = c; device = d; context = gpu.context
+const module = d.createShaderModule({ code: shaderCode })
+pipeline = d.createRenderPipeline({
+  layout: 'auto',
+  vertex: { module, entryPoint: 'vs' },
+  fragment: { module, entryPoint: 'fs', targets: [{ format: gpu.format }] },
+})
+uniformBuffer = d.createBuffer({ size: 48, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST })
+bindGroup = d.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+})
+}
+
+export function frame(time: number) {
+if (!device || !context || !canvas) return
+uniforms.set([canvas.width, canvas.height, time, /* grain */ 1.5, /* scan */ 0.35,
+              /* roll */ 0.5, /* chroma */ 0.1, /* fps */ 30, devicePixelRatio, /* jitter */ 0.2])
+device.queue.writeBuffer(uniformBuffer, 0, uniforms)
+const encoder = device.createCommandEncoder()
+const pass = encoder.beginRenderPass({ colorAttachments: [{
+  view: context.getCurrentTexture().createView(), loadOp: 'clear', storeOp: 'store',
+  clearValue: { r: 0, g: 0, b: 0, a: 1 } }] })
+pass.setPipeline(pipeline); pass.setBindGroup(0, bindGroup); pass.draw(3); pass.end()
+device.queue.submit([encoder.finish()])
+}
+
+export function dispose() { device = null; context = null; canvas = null }</code></pre>
+<p>아래는 이 예제가 실제로 쓰는 셰이더(<code>static.wgsl</code>) 전체다.</p>
+<pre><code>{{shader}}</code></pre>
+
+<h2>5. 주의할 점</h2>
+<ul>
+  <li><b>알갱이 크기는 CSS 픽셀 기준으로.</b> 러너가 캔버스를 <code>CSS 크기 × devicePixelRatio</code>로 맞추므로, 셀 크기에 <code>dpr</code>을 곱하지 않으면 레티나/4K에서 노이즈가 너무 잘아져 회색 면처럼 보인다.</li>
+  <li><b>프레임 레이트를 고정한다.</b> 노이즈를 rAF마다 갱신하면 고주사율 모니터에서 너무 빨라 오히려 평평한 회색으로 보인다. 30fps 근처가 실제 TV 느낌에 가깝다.</li>
+  <li><b>밝기 기준.</b> 기본 캔버스 포맷(<code>bgra8unorm</code>)은 셰이더 출력값이 그대로 표시되므로 별도 감마 처리 없이 0~1을 "보이는 밝기"로 다루면 된다. <code>-srgb</code> 포맷을 쓰면 같은 값이 더 밝게 보이니 대비를 다시 맞춰야 한다.</li>
+  <li><b>해시 입력의 정밀도.</b> <code>fragCoord</code>를 float 그대로 해시하면 브라우저/GPU에 따라 정지 화면에서도 패턴이 깜빡였다는 보고가 있다. 반드시 <code>floor</code>로 셀 정수 좌표를 만든 뒤 <code>u32</code>로 바꿔 해시한다.</li>
+  <li><b>광과민성.</b> 화면 전체가 빠르게 번쩍이는 효과다. 롤링 띠의 밝기 변화를 과하게 주지 말고, 필요하면 블로그 임베드에서는 강도를 낮춘다.</li>
+  <li><b>시간 값.</b> 러너의 <code>time</code>은 초 단위 누적값이다. 프레임 번호 <code>u32</code>는 30fps로 4년 넘게 돌아야 넘치니 걱정할 필요는 없다.</li>
+</ul>
+
+<h2>6. 확장 아이디어</h2>
+<ul>
+  <li><b>채널 전환</b>: 클릭하면 노이즈가 걷히고 약한 신호(테스트 패턴, 희미한 이미지)가 비쳐 보이도록 <code>signal</code> 값을 섞는다. 약한 신호 + 노이즈가 "잡히다 말다 하는" 느낌을 준다.</li>
+  <li><b>소리</b>: Web Audio로 무작위 샘플을 채운 <code>AudioBuffer</code>를 반복 재생하고, 밴드패스 필터로 TV 스피커 느낌을 낸다. 브라우저 자동재생 정책 때문에 사용자 클릭 이후에만 시작할 수 있다.</li>
+  <li><b>CRT 질감</b>: 배럴 왜곡, RGB 섀도 마스크/어퍼처 그릴, 블룸. Timothy Lottes의 CRT 셰이더가 표준적인 참고 자료다.</li>
+  <li><b>인광 잔상</b>: 렌더 타겟 텍스처 2장을 번갈아 쓰며 <code>mix(prev, cur, 0.6)</code>. 노이즈가 조금 부드러워지고 아날로그 느낌이 강해진다.</li>
+  <li><b>VHS 계열</b>: 테이프 주름, 트래킹 노이즈, 색 번짐(chroma bleed)까지 가면 VCR 왜곡 셰이더들(FMS_Cat, Ryk)을 참고한다.</li>
+</ul>
+
+<h2>7. 참고 자료</h2>
+<ul>
+  <li><a target="_blank" rel="noreferrer" href="https://en.wikipedia.org/wiki/Noise_(video)">Noise (video) — Wikipedia</a>: 아날로그 TV 노이즈의 원인과 특징</li>
+  <li><a target="_blank" rel="noreferrer" href="https://graphsearch.epfl.ch/concept/3338992">EPFL Graph Search — Noise (video)</a>: 첫 단 증폭 트랜지스터의 열잡음</li>
+  <li><a target="_blank" rel="noreferrer" href="https://www.universetoday.com/articles/the-switch-to-digital-switches-off-big-bang-tv-signal">Universe Today — The switch to digital switches off Big Bang TV signal</a>: CMB 약 1% 이야기</li>
+  <li><a target="_blank" rel="noreferrer" href="https://www.jcgt.org/published/0009/03/02/paper.pdf">Jarzynski &amp; Olano, Hash Functions for GPU Rendering (JCGT 2020)</a>: PCG / pcg3d 추천 근거</li>
+  <li><a target="_blank" rel="noreferrer" href="https://reedbeta.com/blog/hash-functions-for-gpu-rendering">Nathan Reed — Hash Functions for GPU Rendering</a>: 논문 요약과 PCG 사용 시 주의점</li>
+  <li><a target="_blank" rel="noreferrer" href="https://www.shadertoy.com/view/4djSRW">Dave Hoskins — Hash without Sine (Shadertoy)</a>: <code>sin</code> 기반 해시의 대안</li>
+  <li><a target="_blank" rel="noreferrer" href="https://gist.github.com/munrocket/236ed5ba7e409b8bdf1ff6eca5dcdc39">munrocket — WGSL Noise Algorithms (gist)</a>: WGSL로 옮긴 해시/노이즈 모음</li>
+  <li><a target="_blank" rel="noreferrer" href="https://hugodaniel.com/pages/pngine/docs/samples/procedural-noise/">Pngine — Procedural noise 샘플</a>: 프래그먼트 셰이더 해시 노이즈 + 시간 유니폼</li>
+  <li><a target="_blank" rel="noreferrer" href="https://phaser.io/news/2026/03/phaser-4-noise-cellular-noise-devlog">Phaser 4 노이즈 개발기</a>: fragCoord 해시 정밀도 문제 사례</li>
+  <li><a target="_blank" rel="noreferrer" href="https://www.shadertoy.com/view/MsjXzh">Timothy Lottes — CRT 셰이더 (Shadertoy)</a>: 주사선/섀도 마스크 참고</li>
+  <li><a target="_blank" rel="noreferrer" href="https://www.shadertoy.com/view/ldjGzV">Ryk — VCR distortion (Shadertoy)</a>, <a target="_blank" rel="noreferrer" href="https://www.shadertoy.com/view/MdffD7">FMS_Cat — VCR distortion (Shadertoy)</a>: VHS 계열 확장</li>
+  <li><a target="_blank" rel="noreferrer" href="https://godotshaders.com/shader/vhs-and-crt-monitor-effect/">Godot Shaders — VHS and CRT monitor effect</a>: 롤링 띠(roll speed/strength) 파라미터 예시</li>
+</ul>

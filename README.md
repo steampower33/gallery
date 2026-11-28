@@ -52,12 +52,30 @@ src/
    export function resize(width: number, height: number) {}
    ```
 
+   선택으로 슬라이더와 설명 글을 붙일 수 있다.
+
+   ```ts
+   import type { ParamDef } from '../types'
+   import notesHtml from './notes.html?raw'
+
+   // scene 위에 슬라이더 패널이 생긴다. 값이 바뀌면 setParam 이 불린다.
+   export const params: readonly ParamDef[] = [
+     { key: 'speed', label: '속도', min: 0, max: 2, step: 0.1, value: 1 },
+   ]
+   export function setParam(key: string, value: number) {}
+
+   // "설명 보기"를 누르면 scene 옆 패널에 나오는 HTML 조각.
+   export const notes = notesHtml
+   ```
+
+   설명 글 안에서는 `href="#..."` 같은 페이지 안 링크를 쓰지 않는다 (해시 라우팅과 겹친다).
+
 2. `src/works/index.ts`에 등록한다. 인터페이스가 맞지 않으면 타입 에러가 난다.
 
    ```ts
    import * as myWork from './my-work'
    export const works: readonly Work[] = [
-     { id: 'clear-color', module: clearColor },
+     { id: 'tv-static', module: tvStatic },
      { id: 'my-work', module: myWork },
    ]
    ```
@@ -83,10 +101,13 @@ const module = device.createShaderModule({ code: shaderCode })
 
 ```html
 <!-- 링크 -->
-<a href="https://steampower33.github.io/gallery/#/works/clear-color">Clear Color</a>
+<a href="https://steampower33.github.io/gallery/#/works/tv-static">TV Static</a>
 
-<!-- 임베드: ?embed=1 이면 헤더 없이 캔버스만 -->
-<iframe src="https://steampower33.github.io/gallery/#/works/clear-color?embed=1"
+<!-- 설명 패널을 연 채로 링크 -->
+<a href="https://steampower33.github.io/gallery/#/works/tv-static?notes=1">TV Static 설명</a>
+
+<!-- 임베드: ?embed=1 이면 목차 없이 캔버스만. &controls=1 을 붙이면 슬라이더도 보인다 -->
+<iframe src="https://steampower33.github.io/gallery/#/works/tv-static?embed=1"
         width="800" height="450" style="border:0" loading="lazy"></iframe>
 ```
 

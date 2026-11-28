@@ -1,12 +1,25 @@
 // 예제(work) 인터페이스 정의.
 // src/works/<id>/index.ts 가 이 형태로 export 하고, src/works/index.ts 에서 등록한다.
 
-/** 목차와 호버 미리보기에 쓰이는 정보. */
+/** 목차, 호버 미리보기, 설명 패널 제목에 쓰이는 정보. */
 export interface WorkMeta {
   title: string
   description: string
   /** 썸네일 이미지 URL. 예제 폴더의 이미지를 import 해서 넣는다 (Vite가 base 경로를 붙여 줌). */
   thumbnail: string
+}
+
+/** 화면의 슬라이더로 조절할 수 있는 숫자 하나. */
+export interface ParamDef {
+  /** setParam 에 넘어오는 이름. */
+  key: string
+  /** 슬라이더 옆에 보이는 이름. */
+  label: string
+  min: number
+  max: number
+  step: number
+  /** 기본값. 예제에 들어올 때마다 이 값으로 되돌린다. */
+  value: number
 }
 
 /** init 의 세 번째 인자: 공통 코드가 이미 configure 해 둔 캔버스 컨텍스트. */
@@ -32,6 +45,14 @@ export interface WorkModule {
   dispose(): void
   /** (선택) 캔버스 픽셀 크기가 바뀌었을 때. 깊이 텍스처 등을 다시 만들 때 쓴다. */
   resize?(width: number, height: number): void
+  /**
+   * (선택) 조절할 수 있는 파라미터 목록. 있으면 scene 위에 슬라이더 패널이 생긴다.
+   * 값이 바뀌면 setParam 이 불린다. init 전에도 기본값으로 한 번씩 불리므로 GPU 를 건드리지 말고 값만 저장한다.
+   */
+  params?: readonly ParamDef[]
+  setParam?(key: string, value: number): void
+  /** (선택) 설명 글. HTML 조각 문자열이며 scene 옆 설명 패널에 그대로 들어간다. */
+  notes?: string
 }
 
 /** 목록에 등록된 예제. id 는 URL(/works/:id)과 폴더 이름에 쓰인다. */
