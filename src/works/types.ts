@@ -1,7 +1,7 @@
 // 예제(work) 인터페이스 정의.
 // src/works/<id>/index.ts 가 이 형태로 export 하고, src/works/index.ts 에서 등록한다.
 
-/** 목록 카드와 예제 화면 헤더에 쓰이는 정보. */
+/** 목차와 호버 미리보기에 쓰이는 정보. */
 export interface WorkMeta {
   title: string
   description: string
